@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 import math
+import json # Import json to handle data parsing from URL
 
 # Re-embedding the is_point_in_polygon function to make the API self-contained
 def is_point_in_polygon(point, polygon):
@@ -51,31 +52,32 @@ def is_point_in_polygon(point, polygon):
 app = Flask(__name__)
 
 # Define the API endpoint
-@app.route('/is_inside_polygon', methods=['POST'])
+@app.route('/is_inside_polygon', methods=['GET']) # Changed to GET method
 def check_point_in_polygon():
     """
     API endpoint to check if a given point is inside a polygon.
-    Expects a JSON payload with 'point' and 'polygon' keys.
+    Expects 'point' and 'polygon' as URL query parameters.
 
-    Example JSON payload:
-    {
-        "point": [2, 2],
-        "polygon": [[0, 0], [5, 0], [5, 5], [0, 5]]
-    }
+    Example URL:
+    /is_inside_polygon?point=[2,2]&polygon=[[0,0],[5,0],[5,5],[0,5]]
     """
     try:
-        data = request.get_json()
+        # For GET requests, parameters are in request.args (query string)
+        point_str = request.args.get('point')
+        polygon_str = request.args.get('polygon')
 
-        if not data:
-            return jsonify({"error": "No JSON payload received"}), 400
+        # Input validation for presence of parameters
+        if not all([point_str, polygon_str]):
+            return jsonify({"error": "Missing 'point' or 'polygon' query parameters"}), 400
 
-        point = data.get('point')
-        polygon = data.get('polygon')
+        try:
+            # Parse the string representations of point and polygon into Python objects
+            point = json.loads(point_str)
+            polygon = json.loads(polygon_str)
+        except json.JSONDecodeError:
+            return jsonify({"error": "Invalid JSON format for 'point' or 'polygon'"}), 400
 
-        # Input validation
-        if not all([point, polygon]):
-            return jsonify({"error": "Missing 'point' or 'polygon' in request body"}), 400
-
+        # Input validation for types and structure (same as your POST method)
         if not isinstance(point, list) or len(point) != 2:
             return jsonify({"error": "'point' must be a list of two numbers [x, y]"}), 400
 
@@ -100,6 +102,5 @@ def check_point_in_polygon():
         return jsonify({"error": str(e)}), 500
 
 # To run this Flask app locally for testing:
-# if __name__ == '__main__':
-#     app.run(debug=True, port=5000)
-
+if __name__ == '__main__':
+    app.run(debug=True, port=5000)
